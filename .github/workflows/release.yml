@@ -28,7 +28,7 @@ jobs:
         GOARCH: ${{ matrix.goarch }}
       run: |
         # 这里的 main.Version 要对应 package main
-        go build -v -ldflags "-X main.Version=${{ github.ref_name }} -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o pz-config-app-${{ matrix.goos }}-${{ matrix.goarch }} pz-web-config/main.go
+        go build -v -ldflags "-X main.Version=${{ github.ref_name }} -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o pz-config-app-${{ matrix.goos }}-${{ matrix.goarch }} ./pz-web-config/main.go
 
     - name: Upload Release Assets
       uses: softprops/action-gh-release@v1
