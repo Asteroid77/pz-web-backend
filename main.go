@@ -1,7 +1,10 @@
 package main
 
 import (
+	"embed"
 	"fmt"
+	"html/template"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/exec"
@@ -20,6 +23,9 @@ var (
 	BuildTime   = "unknown"                   // 构建时间
 	GithubRepo  = "Asteroid77/pz-web-backend" // GitHub 仓库 (user/repo)
 )
+
+//go:embed template
+var contentFS embed.FS
 
 func init() {
 	if os.Getenv("DEV_MODE") == "true" {
@@ -46,11 +52,18 @@ func init() {
 }
 
 func main() {
-
+	fs.WalkDir(contentFS, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		fmt.Println("Found:", path)
+		return nil
+	})
 	r := gin.Default()
-	// 加载 HTML (如果你的前端还没做完，这行可能会报错，先注释掉也没事)
-	r.Static("/assets", "./template/assets")
-	r.LoadHTMLGlob("template/index.html")
+	assetsFS, _ := fs.Sub(contentFS, "template/assets")
+	r.StaticFS("/assets", http.FS(assetsFS))
+	tmpl := template.Must(template.New("").ParseFS(contentFS, "template/*.html"))
+	r.SetHTMLTemplate(tmpl)
 
 	// --- API 路由 ---
 	r.GET("/", func(c *gin.Context) {
