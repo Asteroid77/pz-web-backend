@@ -1,0 +1,37 @@
+MakeUp_JP = {
+	MakeUpCategory_Eyes = "目",
+	MakeUpCategory_EyesShadow = "アイシャドウ",
+	MakeUpCategory_FullFace = "フルフェイス",
+	MakeUpCategory_Lips = "リップ",
+
+	MakeUpType_EyesCrow = "カラス",
+	MakeUpType_EyesRedStripes1 = "レットストライプ 1",
+	MakeUpType_EyesRedStripes2 = "レットストライプ 2",
+	MakeUpType_EyesCamo1 = "カモフラージュ 1",
+	MakeUpType_EyesCamo2 = "カモフラージュ 2",
+	MakeUpType_EyesCamoStripes = "ストライプ",
+	MakeUpType_EyesFootball = "アイブラック",
+
+	MakeUpType_EyeShadowWhite = "アイシャドウ ホワイト",
+	MakeUpType_EyeShadowLightBlue = "アイシャドウ ライトブルー",
+	MakeUpType_EyeShadowBlue = "アイシャドウ ブルー",
+	MakeUpType_EyeShadowRed = "アイシャドウ レッド",
+	MakeUpType_EyeShadowPink = "アイシャドウ ピンク",
+	MakeUpType_EyeShadowGreen = "アイシャドウ グリーン",
+	MakeUpType_EyeShadowYellow = "アイシャドウ イエロー",
+
+	MakeUpType_FullFaceCamo1 = "フルカモフラージュ 1",
+	MakeUpType_FullFaceCamo2 = "フルカモフラージュ 2",
+	MakeUpType_FullFaceWarrior = "ウォリア",
+	MakeUpType_FullFaceClown1 = "ピエロ 1",
+	MakeUpType_FullFaceClown2 = "ピエロ 2",
+	MakeUpType_FullFaceSkull1 = "スカル 1",
+	MakeUpType_FullFaceSkull2 = "スカル 2",
+
+	MakeUpType_LipsRed = "リップスティック レッド",
+	MakeUpType_LipsLightBlue = "リップスティック ライトブルー",
+	MakeUpType_LipsBlue = "リップスティック ブルー",
+	MakeUpType_LipsBlack = "リップスティック ブラック",
+	MakeUpType_LipsGreen = "リップスティック グリーン",
+	MakeUpType_LipsPink = "リップスティック ピンク",
+}

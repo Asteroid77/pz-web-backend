@@ -1,0 +1,130 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+	"runtime"
+	"time"
+
+	"github.com/Masterminds/semver/v3"
+)
+
+type GithubRelease struct {
+	TagName string `json:"tag_name"`
+	Assets  []struct {
+		Name               string `json:"name"`
+		BrowserDownloadUrl string `json:"browser_download_url"`
+	} `json:"assets"`
+}
+
+// CheckUpdate 检查 GitHub 最新版
+func CheckUpdate() (string, string, error) {
+	// 1. 构造 API URL (注意：GithubRepo 必须是 "user/repo" 格式)
+	url := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", GithubRepo)
+
+	client := http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return "", "", fmt.Errorf("github api returned %d", resp.StatusCode)
+	}
+
+	var release GithubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return "", "", err
+	}
+
+	// 2. 版本对比 (使用 SemVer)
+	// 如果当前版本是 "dev" 或空，我们通常不建议自动更新，或者总是提示更新
+	// 这里假设 "dev" 永远不更新，除非强制
+	if Version == "dev" {
+		return "", "", nil
+	}
+
+	// 解析版本号 (自动处理 v 前缀)
+	vCurrent, err := semver.NewVersion(Version)
+	if err != nil {
+		// 如果当前版本号格式不对 (比如 commit hash)，没法比，就跳过
+		return "", "", nil
+	}
+
+	vLatest, err := semver.NewVersion(release.TagName)
+	if err != nil {
+		return "", "", fmt.Errorf("invalid release tag: %s", release.TagName)
+	}
+
+	// 只有当 Latest > Current 时才提示更新
+	if vLatest.GreaterThan(vCurrent) {
+		// 寻找对应架构的二进制文件
+		targetName := fmt.Sprintf("pz-config-app-%s-%s", runtime.GOOS, runtime.GOARCH)
+		for _, asset := range release.Assets {
+			if asset.Name == targetName {
+				return release.TagName, asset.BrowserDownloadUrl, nil
+			}
+		}
+		// 如果没找到对应架构的 binary
+		return "", "", fmt.Errorf("no binary found for %s/%s", runtime.GOOS, runtime.GOARCH)
+	}
+
+	return "", "", nil // 已是最新
+}
+
+// PerformUpdate 执行下载和替换
+func PerformUpdate(downloadUrl string) error {
+	// 1. 下载新文件
+	resp, err := http.Get(downloadUrl)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	tmpPath := "/tmp/pz-config-app.new"
+	out, err := os.Create(tmpPath)
+	if err != nil {
+		return err
+	}
+	io.Copy(out, resp.Body)
+	out.Close()
+
+	// 授予执行权限
+	os.Chmod(tmpPath, 0755)
+
+	// 2. 替换旧文件 (原子操作)
+	// 在 Linux 中，即使程序正在运行，也可以重命名它的二进制文件
+	binPath := "/usr/local/bin/pz-config-app"
+
+	// 如果是开发模式，不能把自己覆盖
+	if os.Getenv("DEV_MODE") == "true" {
+		fmt.Println("[Mock] Update file downloaded to", tmpPath)
+		return nil
+	}
+
+	// 备份旧文件
+	os.Rename(binPath, binPath+".bak")
+
+	// 移动新文件到位
+	err = os.Rename(tmpPath, binPath)
+	if err != nil {
+		// 失败回滚
+		os.Rename(binPath+".bak", binPath)
+		return err
+	}
+
+	// 触发重启
+	// 使用 nohup 异步重启，防止当前 HTTP 请求被中断导致客户端收不到响应
+	// 或者直接让前端由 timeout 处理
+	go func() {
+		cmd := exec.Command("supervisorctl", "restart", "webconfig")
+		cmd.Run()
+	}()
+
+	return nil
+}
