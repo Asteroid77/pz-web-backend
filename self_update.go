@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
@@ -23,16 +24,40 @@ type GithubRelease struct {
 
 // CheckUpdate 检查 GitHub 最新版
 func CheckUpdate() (string, string, error) {
-	// 1. 构造 API URL (注意：GithubRepo 必须是 "user/repo" 格式)
+	// 构造 API URL (注意：GithubRepo 必须是 "user/repo" 格式)
 	url := fmt.Sprintf("https://api.github.com/repos/%s/releases/latest", GithubRepo)
 
 	client := http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", "", err
+	}
+	req.Header.Set("User-Agent", "PZ-Web-Configurator")
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	// 发送请求
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", "", err
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == 403 {
+		// 读取限流重置时间
+		resetTimeStr := resp.Header.Get("X-RateLimit-Reset")
+		limit := resp.Header.Get("X-RateLimit-Limit")
+		remaining := resp.Header.Get("X-RateLimit-Remaining")
+
+		errMsg := "github api rate limit exceeded"
+		if resetTimeStr != "" {
+			// 转换时间戳
+			ts, _ := strconv.ParseInt(resetTimeStr, 10, 64)
+			resetTime := time.Unix(ts, 0)
+			errMsg = fmt.Sprintf("GitHub API rate limitation (%s/%s). retry it after %s",
+				remaining, limit, resetTime.Format("15:04:05"))
+		}
+		return "", "", fmt.Errorf(errMsg)
+	}
 	if resp.StatusCode != 200 {
 		return "", "", fmt.Errorf("github api returned %d", resp.StatusCode)
 	}
@@ -42,7 +67,7 @@ func CheckUpdate() (string, string, error) {
 		return "", "", err
 	}
 
-	// 2. 版本对比 (使用 SemVer)
+	// 版本对比 (使用 SemVer)
 	// 如果当前版本是 "dev" 或空，我们通常不建议自动更新，或者总是提示更新
 	// 这里假设 "dev" 永远不更新，除非强制
 	if Version == "dev" {
