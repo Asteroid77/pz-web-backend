@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
@@ -89,14 +90,23 @@ func CheckUpdate() (string, string, error) {
 	// 只有当 Latest > Current 时才提示更新
 	if vLatest.GreaterThan(vCurrent) {
 		// 寻找对应架构的二进制文件
-		targetName := fmt.Sprintf("pz-config-app-%s-%s", runtime.GOOS, runtime.GOARCH)
+		expectedPrefix := "pz-web-backend"
+		osName := runtime.GOOS     // linux, windows, darwin
+		archName := runtime.GOARCH // amd64, arm64
+		fmt.Printf("[Update] Looking for asset with: %s, %s, %s\n", expectedPrefix, osName, archName)
+
 		for _, asset := range release.Assets {
-			if asset.Name == targetName {
+			name := strings.ToLower(asset.Name)
+
+			// 使用模糊匹配 (包含 OS 和 Arch 即可)
+			if strings.Contains(name, expectedPrefix) &&
+				strings.Contains(name, osName) &&
+				strings.Contains(name, archName) {
 				return release.TagName, asset.BrowserDownloadUrl, nil
 			}
 		}
-		// 如果没找到对应架构的 binary
-		return "", "", fmt.Errorf("no binary found for %s/%s", runtime.GOOS, runtime.GOARCH)
+
+		return "", "", fmt.Errorf("no binary found for %s/%s in release %s", osName, archName, release.TagName)
 	}
 
 	return "", "", nil // 已是最新

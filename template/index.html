@@ -528,7 +528,7 @@
 
                 // 添加单个 Mod 项目 (处理多 ModID 情况)
                 addModItem(item) {
-                    // 1. 检查 ModID 是否存在
+                    // 检查 ModID 是否存在
                     let mid = item.mod_id;
                     
                     // 2. 如果包含多个 ID (例如 "ID1,ID2")
@@ -546,7 +546,7 @@
                         return;
                     }
 
-                    // 3. 如果 ModID 未知 (?)
+                    //  如果 ModID 未知 (?)
                     if (mid === '?' || mid === 'Unknown (Check Page)') {
                          const msg = (this.i18n.prompt_mod_id_manual || '').replace('{0}', item.name);
                         mid = prompt(msg || `Please enter Mod ID for ${item.name}:`);
@@ -649,8 +649,6 @@
                 },
 
                 async fetchLogs() {
-                    // 需要在 Go 后端实现一个 /api/logs 接口，读取 supervisor 日志
-                    // 暂时 mock
                     try {
                          const res = await fetch('/api/logs');
                          const data = await res.json();
@@ -690,6 +688,10 @@
                                 alert(this.i18n.msg_update_performing || 'Update command sent, please refresh later.');
                             }
                         } else {
+                            if(data.error) {
+                                this.showToast(data.error, 'error');
+                                return
+                            }
                             // 使用 i18n
                             this.showToast(this.i18n.msg_already_latest || 'Already latest version');
                         }
