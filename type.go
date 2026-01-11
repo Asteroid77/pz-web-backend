@@ -21,5 +21,6 @@ type LanguageOption struct {
 	Name string `json:"name"`
 }
 type SaveRequest struct {
-	Items []ConfigItem `json:"items"` // 只需要 Key 和 Value
+	Items   []ConfigItem `json:"items"` // 只需要 Key 和 Value
+	Restart bool         `json:"restart"`
 }

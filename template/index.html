@@ -618,16 +618,12 @@
                         const res = await fetch(`/api/config/${type}`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ items: items })
+                            body: JSON.stringify({ items: items, restart: restart })
                         });
 
                         if (!res.ok) throw new Error(this.i18n.msg_save_fail);
 
                         this.showToast(this.i18n.msg_save_success, 'success');
-
-                        if (restart) {
-                            this.performAction('restart');
-                        }
 
                     } catch (e) {
                         this.showToast(e.message, 'error');

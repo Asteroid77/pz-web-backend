@@ -107,26 +107,57 @@ func main() {
 	r.GET("/api/logs", func(c *gin.Context) {
 		// 为了安全和简单，这里演示读取 /var/log/supervisord.log
 		// 实际可以用 cmd 输出
-		path := "/var/log/supervisord.log"
-		content, _ := os.ReadFile(path)
-
-		// 只取最后 5000 字符防止报文过大
-		s := string(content)
-		if len(s) > 5000 {
-			s = s[len(s)-5000:]
+		path := "/home/steam/pz-stdout.log"
+		f, err := os.Open(path)
+		if err != nil {
+			// 如果文件不存在（比如刚启动还没产生日志），返回提示
+			c.JSON(200, gin.H{"logs": "等待服务启动，日志暂为空..."})
+			return
 		}
-		c.JSON(200, gin.H{"logs": s})
+		defer f.Close()
+		// 获取文件大小
+		stat, _ := f.Stat()
+		fileSize := stat.Size()
+
+		// 只读取最后 10KB (约5000-10000字)，避免把浏览器卡死
+		// 如果你想看更多，可以调大这个值
+		const readSize = 10240
+
+		var content []byte
+		if fileSize > readSize {
+			// 如果文件很大，从末尾开始读
+			content = make([]byte, readSize)
+			// 移动光标到 倒数 readSize 的位置
+			f.Seek(-readSize, 2)
+			f.Read(content)
+		} else {
+			// 如果文件小，全读
+			content, _ = os.ReadFile(path)
+		}
+
+		c.JSON(200, gin.H{"logs": string(content)})
 	})
 	r.POST("/api/action/update_restart", func(c *gin.Context) {
 		// 重启 pzserver。
-		// start-pz.sh 脚本里写了 "启动时检查更新"
-		// 直接 restart 进程就等于 "Update & Restart"
-		cmd := exec.Command("supervisorctl", "restart", "pzserver")
-		if err := cmd.Start(); err != nil {
-			c.JSON(500, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(200, gin.H{"status": "ok", "message": "Updating and restarting..."})
+		c.JSON(200, gin.H{"status": "ok", "message": "正在后台执行更新与重启..."})
+
+		// 2. 异步执行
+		go func() {
+			fmt.Println(">>> 准备执行重启命令...")
+
+			// 使用绝对路径 /usr/bin/supervisorctl
+			// -c 指定配置文件，确保它能找到 socket 路径
+			cmd := exec.Command("/usr/bin/supervisorctl", "-c", "/etc/supervisor/conf.d/supervisord.conf", "restart", "pzserver")
+
+			// 捕获所有输出（包括错误信息）
+			output, err := cmd.CombinedOutput()
+
+			if err != nil {
+				fmt.Printf("!!! 重启执行失败 !!!\nError: %v\nOutput: %s\n", err, string(output))
+			} else {
+				fmt.Printf(">>> 重启指令执行成功:\n%s\n", string(output))
+			}
+		}()
 	})
 	r.GET("/api/i18n", func(c *gin.Context) {
 		currentLang := strings.ToUpper(c.DefaultQuery("lang", "CN"))
@@ -275,7 +306,26 @@ func main() {
 			exec.Command("chown", "steam:steam", path).Run()
 		}
 
-		c.JSON(200, gin.H{"status": "saved"})
+		if req.Restart {
+			// 异步执行重启，避免阻塞 HTTP 响应
+			go func() {
+				fmt.Println(">>> [Auto-Restart] 配置保存触发重启...")
+				// 使用绝对路径，确保能找到命令
+				cmd := exec.Command("/usr/bin/supervisorctl", "-c", "/etc/supervisor/conf.d/supervisord.conf", "restart", "pzserver")
+
+				output, err := cmd.CombinedOutput()
+				if err != nil {
+					fmt.Printf("!!! [Auto-Restart] 重启失败 !!!\nError: %v\nOutput: %s\n", err, string(output))
+				} else {
+					fmt.Printf(">>> [Auto-Restart] 重启指令执行成功:\n%s\n", string(output))
+				}
+			}()
+
+			c.JSON(200, gin.H{"status": "saved_and_restarting", "message": "配置已保存，服务器正在重启..."})
+		} else {
+			// 不需要重启，仅保存
+			c.JSON(200, gin.H{"status": "saved", "message": "配置已保存"})
+		}
 	})
 
 	// 检查更新
