@@ -23,8 +23,8 @@ type SteamResponse struct {
 	} `json:"response"`
 }
 
-// 缓存文件路径 (在 WSL/Docker 里存在 /opt/pz-web/ 目录下)
-const CacheFilePath = "/opt/pz-web/workshop_cache.json"
+// 缓存文件路径 (在 WSL/Docker 里存在 /opt/pz-web-backend/ 目录下)
+const CacheFilePath = "/opt/pz-web-backend/workshop_cache.json"
 
 // 简单的内存缓存，防止重复请求 Steam
 var steamCache = make(map[string]ModInfo)

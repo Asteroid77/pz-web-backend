@@ -15,8 +15,7 @@ type ModInfo struct {
 	Description string `json:"description"`
 }
 
-// 假设 Steam 的创意工坊目录
-// 在 Dockerfile 里我们是 steam 用户，路径通常是 /home/steam/steamapps/workshop/content/108600
+// 在 Dockerfile 里 使用名为steam的用户，路径为 /home/steam/steamapps/workshop/content/108600
 var WorkshopContentDir = "/home/steam/steamapps/workshop/content/108600"
 
 func init() {
