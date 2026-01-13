@@ -221,7 +221,7 @@ func main() {
 		var results []ModInfo
 
 		// 1. 先获取所有本地已安装的
-		localMods, _ := ScanInstalledMods()
+		localMods, _ := ScanLocalMods("")
 
 		for _, wid := range targetIds {
 			found := false
@@ -254,7 +254,7 @@ func main() {
 	})
 	// 返回当前所有本地模组
 	r.GET("/api/mods", func(c *gin.Context) {
-		localMods, _ := ScanInstalledMods()
+		localMods, _ := ScanLocalMods("")
 		if localMods == nil {
 			c.JSON(200, []ModInfo{})
 		}

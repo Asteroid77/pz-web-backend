@@ -446,6 +446,8 @@
                 // 打开管理器
                 async openModManager() {
                     this.modLoading = true;
+                    const availableModsResp = await fetch(`/api/mods`);
+                    this.availableMods = await availableModsResp.json()
                     // 从 serverConfig 解析当前配置
                     const modsItem = this.serverConfig.find(i => i.key === 'Mods');
                     const wsItem = this.serverConfig.find(i => i.key === 'WorkshopItems');
@@ -455,7 +457,6 @@
                     .map(s => s.trim().replace(/^\\/, '')) // 去除开头的 \
                     .filter(Boolean);
                     const currentWsIds = (wsItem ? wsItem.value : "").split(';').filter(Boolean);
-
                     // 如果没有任何工坊物品，直接清空列表并打开
                     if (currentWsIds.length === 0) {
                         this.modLoading = false;
@@ -463,6 +464,7 @@
                         document.getElementById('mod_modal').showModal();
                         return;
                     }
+                    document.getElementById('mod_modal').showModal();
                     const res = await fetch(`/api/mods/lookup?ids=${currentWsIds.join(',')}`);
                     const lookupData = await res.json();
                     this.modLoading = false;
@@ -497,7 +499,6 @@
                             });
                         }
                     });
-                    
                     document.getElementById('mod_modal').showModal();
                 },
 

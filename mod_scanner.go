@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,89 +16,138 @@ type ModInfo struct {
 	Description string `json:"description"`
 }
 
-// 在 Dockerfile 里 使用名为steam的用户，路径为 /home/steam/steamapps/workshop/content/108600
-// 但在镜像里面，我设置为/opt/pzserver/steamapps/workshop/content/108600
-var WorkshopContentDir = "/opt/pzserver/steamapps/workshop/content/108600"
-
-func init() {
-	if os.Getenv("DEV_MODE") == "true" {
-		cwd, _ := os.Getwd()
-		WorkshopContentDir = filepath.Join(cwd, "mock_workshop")
+// 暴力扫描：给定安装目录，找到所有 mod.info
+func ScanLocalMods(installDir string) ([]ModInfo, error) {
+	if installDir == "" {
+		if os.Getenv("DEV_MODE") == "true" {
+			installDir = "./"
+		} else {
+			installDir = "/opt/pzserver"
+		}
 	}
-}
-
-// ScanInstalledMods 扫描已下载的所有 Mod
-func ScanInstalledMods() ([]ModInfo, error) {
 	var mods []ModInfo
 
-	// 遍历 WorkshopID 目录 (如 108600/2857548524)
-	workshopDirs, err := os.ReadDir(WorkshopContentDir)
-	if err != nil {
-		return nil, err
+	// 基础路径: /opt/pzserver/steamapps/workshop/content/108600
+	workshopBase := filepath.Join(installDir, "steamapps", "workshop", "content", "108600")
+
+	// 检查根目录
+	if _, err := os.Stat(workshopBase); os.IsNotExist(err) {
+		return mods, fmt.Errorf("workshop base not found: %s", workshopBase)
 	}
 
-	for _, wsDir := range workshopDirs {
-		if !wsDir.IsDir() {
-			continue
-		}
-		wsID := wsDir.Name()
+	fmt.Printf("[Scanner] Deep scanning in: %s\n", workshopBase)
 
-		// 进入 mods 目录 (如 108600/2857548524/mods)
-		modsPath := filepath.Join(WorkshopContentDir, wsID, "mods")
-		modDirs, err := os.ReadDir(modsPath)
+	// 使用 WalkDir 进行递归遍历 (比 Walk 更快)
+	err := filepath.WalkDir(workshopBase, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			// 有些 workshop item 可能不是 mod 或者是旧结构，尝试直接找 mod.info
-			// 简单起见，这里假设标准结构
-			continue
+			return nil // 跳过错误，继续扫描其他文件
 		}
 
-		for _, mDir := range modDirs {
-			if !mDir.IsDir() {
-				continue
-			}
-			// 读取 mod.info
-			infoPath := filepath.Join(modsPath, mDir.Name(), "mod.info")
-			info, err := parseModInfo(infoPath)
-			if err == nil {
-				info.WorkshopID = wsID
-				steamMutex.RLock()
-				if cached, ok := steamCache[wsID]; ok {
-					// 拼接 (例如: "Common Sense ([B41] Common Sense)")
-					info.Name = fmt.Sprintf("%s (%s)", cached.Name, info.Name)
+		// 我们只关心名叫 mod.info 的文件
+		if !d.IsDir() && strings.EqualFold(d.Name(), "mod.info") {
+
+			// 关键点：我们需要推断 WorkshopID
+			// 路径通常是: .../108600/{WorkshopID}/mods/{ModName}/{Version?}/mod.info
+			// 所以我们往上找，找到数字命名的那个目录，就是 WorkshopID
+			wsID := extractWorkshopID(path, workshopBase)
+
+			// 解析文件
+			info, parseErr := parseModInfo(path, wsID)
+			if parseErr == nil {
+				// 去重逻辑 (可选)
+				// 如果同一个 WorkshopID 下有多个版本的 mod.info (比如 42 和 42.13)
+				// 它们的 ModID 通常是一样的。我们需要决定保留哪个。
+				// 这里使用简单策略：如果 ModID 已存在，覆盖它（假设后遍历到的是深层/新版）
+				// 或者全部返回，让前端去重。
+				// 为了保险，我们直接添加到列表，但在添加前检查一下是否重复
+
+				found := false
+				for i, existing := range mods {
+					if existing.ModID == info.ModID && existing.WorkshopID == info.WorkshopID {
+						// 发现重复！这通常意味着有多版本文件夹 (mods/X/42/mod.info 和 mods/X/mod.info)
+						// 简单的启发式策略：保留路径更长的那个（通常是特定版本文件夹）
+						// 或者保留描述更长的？
+						// 咱们这里简单点：保留后发现的
+						mods[i] = info
+						found = true
+						break
+					}
 				}
-				steamMutex.RUnlock()
-				mods = append(mods, info)
+				if !found {
+					mods = append(mods, info)
+				}
 			}
 		}
-	}
-	return mods, nil
+		return nil
+	})
+
+	fmt.Printf("[Scanner] Scan complete. Found %d mods.\n", len(mods))
+	return mods, err
 }
 
-// 解析 mod.info 文件
-func parseModInfo(path string) (ModInfo, error) {
-	f, err := os.Open(path)
+// 辅助函数：从路径中提取 WorkshopID
+// 路径示例: /opt/.../108600/123456/mods/ModA/mod.info -> 返回 123456
+func extractWorkshopID(fullPath string, basePath string) string {
+	// 去掉基础路径前缀
+	rel, err := filepath.Rel(basePath, fullPath)
+	if err != nil {
+		return "?"
+	}
+
+	// 分割路径
+	parts := strings.Split(rel, string(os.PathSeparator))
+
+	// 第一个部分通常就是 WorkshopID (数字)
+	if len(parts) > 0 {
+		return parts[0]
+	}
+	return "?"
+}
+
+// 解析 mod.info (保持不变，够用了)
+func parseModInfo(path string, wsID string) (ModInfo, error) {
+	file, err := os.Open(path)
 	if err != nil {
 		return ModInfo{}, err
 	}
-	defer f.Close()
+	defer file.Close()
 
-	info := ModInfo{}
-	scanner := bufio.NewScanner(f)
+	info := ModInfo{WorkshopID: wsID}
+	scanner := bufio.NewScanner(file)
+
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) == 2 {
-			key := strings.ToLower(parts[0])
-			val := parts[1]
-			switch key {
-			case "name":
-				info.Name = val
-			case "id":
-				info.ModID = val
-			case "description":
-				info.Description = val
-			}
+		// 处理 UTF-8 BOM 头 (有些文件开头会有乱码)
+		text := strings.TrimSpace(scanner.Text())
+		text = strings.TrimPrefix(text, "\uFEFF")
+
+		if text == "" || strings.HasPrefix(text, "//") {
+			continue
+		}
+
+		parts := strings.SplitN(text, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.ToLower(strings.TrimSpace(parts[0]))
+		val := strings.TrimSpace(parts[1])
+
+		switch key {
+		case "name":
+			info.Name = val
+		case "id":
+			info.ModID = val
+		case "description":
+			info.Description = val
 		}
 	}
+
+	if info.ModID == "" {
+		return info, fmt.Errorf("no id")
+	}
+	if info.Name == "" {
+		info.Name = info.ModID
+	}
+
 	return info, nil
 }
