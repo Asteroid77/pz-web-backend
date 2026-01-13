@@ -134,7 +134,14 @@ func PerformUpdate(downloadUrl string) error {
 
 	// 2. 替换旧文件 (原子操作)
 	// 在 Linux 中，即使程序正在运行，也可以重命名它的二进制文件
-	binPath := "/usr/local/bin/pz-config-app"
+	binPath, err := os.Executable()
+
+	if err != nil {
+		//怎么会获取不到呢，真获取不到就硬编码
+		binPath = "/opt/pz-web-backend/pz-web-backend"
+	}
+
+	fmt.Printf("[Update] Target binary path: %s\n", binPath)
 
 	// 如果是开发模式，不能把自己覆盖
 	if os.Getenv("DEV_MODE") == "true" {
