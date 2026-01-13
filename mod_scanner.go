@@ -16,7 +16,8 @@ type ModInfo struct {
 }
 
 // 在 Dockerfile 里 使用名为steam的用户，路径为 /home/steam/steamapps/workshop/content/108600
-var WorkshopContentDir = "/home/steam/steamapps/workshop/content/108600"
+// 但在镜像里面，我设置为/opt/pzserver/steamapps/workshop/content/108600
+var WorkshopContentDir = "/opt/pzserver/steamapps/workshop/content/108600"
 
 func init() {
 	if os.Getenv("DEV_MODE") == "true" {
