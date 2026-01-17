@@ -2,7 +2,7 @@
 
 一个为 [Project Zomboid Dedicated Server](https://store.steampowered.com/app/380870/Project_Zomboid_Dedicated_Server/) 设计的轻量级、Web 可视化配置管理工具。
 
-该项目作为 Docker 容器中的 Sidecar 服务运行，提供了一个现代化的 Web 界面来管理复杂的 `servertest.ini` 和 `SandboxVars.lua`，并集成了模组管理、多语言支持和服务器控制功能。
+该项目作为 Docker 容器中的 Sidecar 服务运行，提供了 Web 界面来管理 `servertest.ini` 和 `SandboxVars.lua`，集成了模组管理、多语言支持和服务器控制功能。
 
 ---
 
@@ -10,9 +10,10 @@
 
 *   **可视化配置编辑**：
     *   自动解析 `Server.ini` 和 `SandboxVars.lua`。
-    *   **I18n 支持**：直接读取游戏原生翻译文件，自动显示配置项的中文/英文名称和 Tooltip。
+    *   **I18n 支持**：直接读取游戏原生翻译文件，自动显示配置项的中文/英文名称和 Tooltip（没翻译的我就没做:p）。
     *   **智能分类**：自动将几百个配置项归类（如“僵尸特性”、“物资稀有度”）。
     *   **表单控件**：自动识别下拉选项（Select）和文本输入（Input）。
+    *   **TODO**：将bool变成switch组件，数字类的Option用inputNumber组件替代。
 
 *   **模组管理器**：
     *   **创意工坊集成**：支持直接输入 Workshop ID，自动从 Steam API 获取模组名称。
@@ -22,6 +23,7 @@
 *   **服务器监控与控制**：
     *   实时查看 Supervisor 控制台日志。
     *   提供“重启”和“更新并重启”功能（自动触发 SteamCMD 更新）。
+    *   提供面板自重启功能，方便build调试
 
 *   **轻量**：
     *   基于 Go (Gin) 编写，编译后仅几 MB。
