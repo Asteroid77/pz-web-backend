@@ -260,6 +260,7 @@ func main() {
 		}
 		c.JSON(200, localMods)
 	})
+
 	// 保存配置文件
 	r.POST("/api/config/:name", func(c *gin.Context) {
 		name := c.Param("name")
@@ -358,6 +359,8 @@ func main() {
 		}
 		c.JSON(200, gin.H{"status": "updating"})
 	})
+	// 面板重启
+	r.POST("/api/service/restart", handleRestartPanel)
 	// 启动服务
 	r.Run(":10888")
 }

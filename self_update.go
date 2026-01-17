@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/gin-gonic/gin"
 )
 
 type GithubRelease struct {
@@ -170,9 +171,18 @@ func PerformUpdate(downloadUrl string) error {
 
 	return nil
 }
-func RestartService() {
+func handleRestartPanel(c *gin.Context) {
+	// 异步执行，防止 HTTP 请求被中断导致前端报错
 	go func() {
+		// 稍微延迟一下，给 HTTP 响应一点时间返回
+		time.Sleep(1 * time.Second)
+
+		// 这里的 webconfig 必须和你 supervisor conf 里的 program 名称一致
 		cmd := exec.Command("supervisorctl", "restart", "webconfig")
-		cmd.Run()
+		if err := cmd.Run(); err != nil {
+			fmt.Println("Restart failed:", err)
+		}
 	}()
+
+	c.JSON(200, gin.H{"status": "ok", "message": "面板正在重启，请稍后刷新页面..."})
 }
