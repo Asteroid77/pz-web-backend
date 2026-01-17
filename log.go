@@ -15,6 +15,9 @@ func streamLogs(c *gin.Context) {
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Header().Set("Connection", "keep-alive")
 	c.Writer.Header().Set("Transfer-Encoding", "chunked")
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "*") // 解决跨域
+	c.Writer.Header().Set("X-Accel-Buffering", "no")          // 解决 Nginx 缓冲
+	c.Writer.Header().Set("Content-Encoding", "identity")     // 禁用压缩
 
 	// 使用 tail -f -n 100 命令读取日志，这是最简单且性能最好的方式
 	// -n 100 表示先输出最后100行，然后持续输出新内容
