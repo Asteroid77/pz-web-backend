@@ -16,7 +16,7 @@ type ModInfo struct {
 	Description string `json:"description"`
 }
 
-// 暴力扫描：给定安装目录，找到所有 mod.info
+// 给定安装目录，找到所有 mod.info
 func ScanLocalMods(installDir string) ([]ModInfo, error) {
 	if installDir == "" {
 		if os.Getenv("DEV_MODE") == "true" {
@@ -46,28 +46,26 @@ func ScanLocalMods(installDir string) ([]ModInfo, error) {
 		// 我们只关心名叫 mod.info 的文件
 		if !d.IsDir() && strings.EqualFold(d.Name(), "mod.info") {
 
-			// 关键点：我们需要推断 WorkshopID
+			// 推断 WorkshopID
 			// 路径通常是: .../108600/{WorkshopID}/mods/{ModName}/{Version?}/mod.info
-			// 所以我们往上找，找到数字命名的那个目录，就是 WorkshopID
+			// 往上找，找到数字命名的那个目录，就是 WorkshopID
 			wsID := extractWorkshopID(path, workshopBase)
 
 			// 解析文件
 			info, parseErr := parseModInfo(path, wsID)
 			if parseErr == nil {
-				// 去重逻辑 (可选)
+				// 去重
 				// 如果同一个 WorkshopID 下有多个版本的 mod.info (比如 42 和 42.13)
-				// 它们的 ModID 通常是一样的。我们需要决定保留哪个。
-				// 这里使用简单策略：如果 ModID 已存在，覆盖它（假设后遍历到的是深层/新版）
-				// 或者全部返回，让前端去重。
-				// 为了保险，我们直接添加到列表，但在添加前检查一下是否重复
-
+				// 它们的 ModID 通常是一样的,需要决定保留哪个。
+				// 简单策略：如果 ModID 已存在，覆盖它（假设后遍历到的是深层/新版）
+				// 直接添加到列表，但在添加前检查一下是否重复
 				found := false
 				for i, existing := range mods {
 					if existing.ModID == info.ModID && existing.WorkshopID == info.WorkshopID {
-						// 发现重复！这通常意味着有多版本文件夹 (mods/X/42/mod.info 和 mods/X/mod.info)
-						// 简单的启发式策略：保留路径更长的那个（通常是特定版本文件夹）
-						// 或者保留描述更长的？
-						// 咱们这里简单点：保留后发现的
+						// 发现重复。
+						// 这通常意味着有多版本文件夹 (mods/X/42/mod.info 和 mods/X/mod.info)
+						// 保留路径更长的那个（通常是特定版本文件夹）
+						// 简单策略：保留后发现的
 						mods[i] = info
 						found = true
 						break
@@ -85,7 +83,7 @@ func ScanLocalMods(installDir string) ([]ModInfo, error) {
 	return mods, err
 }
 
-// 辅助函数：从路径中提取 WorkshopID
+// 从路径中提取 WorkshopID
 // 路径示例: /opt/.../108600/123456/mods/ModA/mod.info -> 返回 123456
 func extractWorkshopID(fullPath string, basePath string) string {
 	// 去掉基础路径前缀
@@ -104,7 +102,7 @@ func extractWorkshopID(fullPath string, basePath string) string {
 	return "?"
 }
 
-// 解析 mod.info (保持不变，够用了)
+// 解析 mod.info
 func parseModInfo(path string, wsID string) (ModInfo, error) {
 	file, err := os.Open(path)
 	if err != nil {

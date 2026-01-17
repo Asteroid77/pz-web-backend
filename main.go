@@ -104,42 +104,9 @@ func main() {
 		}
 		c.JSON(200, gin.H{"filename": "SandboxVars.lua", "lang": lang, "items": items})
 	})
-	r.GET("/api/logs", func(c *gin.Context) {
-		// 为了安全和简单，这里演示读取 /var/log/supervisord.log
-		// 实际可以用 cmd 输出
-		path := "/home/steam/pz-stdout.log"
-		f, err := os.Open(path)
-		if err != nil {
-			// 如果文件不存在（比如刚启动还没产生日志），返回提示
-			c.JSON(200, gin.H{"logs": "等待服务启动，日志暂为空..."})
-			return
-		}
-		defer f.Close()
-		// 获取文件大小
-		stat, _ := f.Stat()
-		fileSize := stat.Size()
-
-		// 只读取最后 10KB (约5000-10000字)，避免把浏览器卡死
-		// 如果你想看更多，可以调大这个值
-		const readSize = 10240
-
-		var content []byte
-		if fileSize > readSize {
-			// 如果文件很大，从末尾开始读
-			content = make([]byte, readSize)
-			// 移动光标到 倒数 readSize 的位置
-			f.Seek(-readSize, 2)
-			f.Read(content)
-		} else {
-			// 如果文件小，全读
-			content, _ = os.ReadFile(path)
-		}
-
-		c.JSON(200, gin.H{"logs": string(content)})
-	})
 	r.POST("/api/action/update_restart", func(c *gin.Context) {
 		// 重启 pzserver。
-		c.JSON(200, gin.H{"status": "ok", "message": "正在后台执行更新与重启..."})
+		c.JSON(200, gin.H{"status": "ok", "message": "Updating and Restarting in background..."})
 
 		// 2. 异步执行
 		go func() {
@@ -197,7 +164,7 @@ func main() {
 			return languages[i].Code < languages[j].Code
 		})
 
-		// 2. 获取当前语言的 UI 文本
+		// 获取当前语言的 UI 文本
 		// 如果请求的语言没有 UI 翻译（比如 AR），回退到 EN
 		uiResources, ok := WebUIResources[currentLang]
 		if !ok {
@@ -220,7 +187,7 @@ func main() {
 		targetIds := strings.Split(idsStr, ",")
 		var results []ModInfo
 
-		// 1. 先获取所有本地已安装的
+		// 先获取所有本地已安装的
 		localMods, _ := ScanLocalMods("")
 
 		for _, wid := range targetIds {
@@ -260,6 +227,7 @@ func main() {
 		}
 		c.JSON(200, localMods)
 	})
+
 	// 保存配置文件
 	r.POST("/api/config/:name", func(c *gin.Context) {
 		name := c.Param("name")
@@ -321,10 +289,10 @@ func main() {
 				}
 			}()
 
-			c.JSON(200, gin.H{"status": "saved_and_restarting", "message": "配置已保存，服务器正在重启..."})
+			c.JSON(200, gin.H{"status": "saved_and_restarting", "message": "Save completed! Restarting server..."})
 		} else {
 			// 不需要重启，仅保存
-			c.JSON(200, gin.H{"status": "saved", "message": "配置已保存"})
+			c.JSON(200, gin.H{"status": "saved", "message": "Successfully saved!"})
 		}
 	})
 
@@ -358,6 +326,12 @@ func main() {
 		}
 		c.JSON(200, gin.H{"status": "updating"})
 	})
+	// 面板重启
+	r.POST("/api/service/restart", handleRestartPanel)
+
+	// SSE日志流
+	r.GET("/api/logs/stream", streamLogs)
+
 	// 启动服务
 	r.Run(":10888")
 }

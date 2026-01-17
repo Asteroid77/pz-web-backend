@@ -6,13 +6,13 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/gin-gonic/gin"
 )
 
 type GithubRelease struct {
@@ -114,7 +114,7 @@ func CheckUpdate() (string, string, error) {
 
 // PerformUpdate 执行下载和替换
 func PerformUpdate(downloadUrl string) error {
-	// 1. 下载新文件
+	// 下载新文件
 	resp, err := http.Get(downloadUrl)
 	if err != nil {
 		return err
@@ -132,7 +132,7 @@ func PerformUpdate(downloadUrl string) error {
 	// 授予执行权限
 	os.Chmod(tmpPath, 0755)
 
-	// 2. 替换旧文件 (原子操作)
+	// 替换旧文件 (原子操作)
 	// 在 Linux 中，即使程序正在运行，也可以重命名它的二进制文件
 	binPath, err := os.Executable()
 
@@ -164,9 +164,21 @@ func PerformUpdate(downloadUrl string) error {
 	// 使用 nohup 异步重启，防止当前 HTTP 请求被中断导致客户端收不到响应
 	// 或者直接让前端由 timeout 处理
 	go func() {
-		cmd := exec.Command("supervisorctl", "restart", "webconfig")
-		cmd.Run()
+		time.Sleep(1 * time.Second)
+		fmt.Println("[System] Exiting to trigger Supervisor restart...")
+		os.Exit(0)
 	}()
 
 	return nil
+}
+func handleRestartPanel(c *gin.Context) {
+	// 异步执行，防止 HTTP 请求被中断导致前端报错
+	go func() {
+		// 稍微延迟一下，给 HTTP 响应一点时间返回
+		time.Sleep(1 * time.Second)
+		fmt.Println("[System] Exiting to trigger Supervisor restart...")
+		os.Exit(0)
+	}()
+
+	c.JSON(200, gin.H{"status": "ok", "message": "Restaring..."})
 }
