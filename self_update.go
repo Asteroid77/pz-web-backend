@@ -170,3 +170,9 @@ func PerformUpdate(downloadUrl string) error {
 
 	return nil
 }
+func RestartService() {
+	go func() {
+		cmd := exec.Command("supervisorctl", "restart", "webconfig")
+		cmd.Run()
+	}()
+}
