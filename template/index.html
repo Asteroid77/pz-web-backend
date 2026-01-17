@@ -202,7 +202,7 @@
                  <!-- 重启面板  -->
                 <button class="btn btn-error h-auto py-4 flex flex-col gap-2" @click="restartPanel()">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg>
-                    <span>Restart Web Service</span>
+                    <span x-text="i18n.menu_restart_service"></span>
                 </button>
                  <!-- 检查更新  -->
                 <button class="btn btn-warning h-auto py-4 flex flex-col gap-2" @click="checkUpdate()">
@@ -220,17 +220,31 @@
                 </button>
             </div>
 
-            <!-- 日志 -->
+            <!-- 日志区域 -->
             <div class="card bg-base-100 shadow-xl border border-base-200">
                 <div class="card-body p-0">
+                    <!-- 标题栏 -->
                     <div class="p-3 border-b border-base-200 flex justify-between items-center bg-base-200/50 rounded-t-box">
                         <span class="font-bold text-sm flex items-center gap-2">
-                            <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                            Console Log
+                            <!-- 状态指示灯 -->
+                            <div class="w-2 h-2 rounded-full" 
+                                :class="logConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'"></div>
+                            Server Log (Real-time)
                         </span>
-                        <button class="btn btn-xs btn-ghost" @click="fetchLogs">Refresh</button>
+                        
+                        <!-- 手动开关日志流 -->
+                        <div class="flex gap-2">
+                            <button class="btn btn-xs" @click="toggleLogStream()" x-text="i18n.btn_connect"></button>
+                            <button class="btn btn-xs" @click="logs = ''">Clear</button>
+                        </div>
                     </div>
-                    <pre class="h-[400px] overflow-auto p-4 text-xs font-mono bg-[#1e1e1e] text-green-500 log-viewer" x-text="logs"></pre>
+                    
+                    <!-- 日志内容框 -->
+                    <!-- 
+                        x-ref="logBox" 用于 JS 获取 DOM 元素进行自动滚动 
+                        white-space-pre-wrap 保证换行正常显示
+                    -->
+                    <pre x-ref="logBox" class="h-[400px] overflow-auto p-4 text-xs font-mono bg-[#1e1e1e] text-green-500 leading-tight whitespace-pre-wrap" x-text="logs"></pre>
                 </div>
             </div>
         </div>
@@ -333,7 +347,7 @@
                                             <span class="bg-base-200 px-1 rounded">M: <span x-text="mod.mod_id"></span></span>
                                         </div>
                                     </div>
-                                    <!-- 按钮保持原样，只有图标和逻辑 -->
+                                    <!-- 按钮组 -->
                                     <div class="flex gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button class="btn btn-xs btn-square btn-ghost" @click="moveMod(index, -1)" :disabled="index === 0">▲</button>
                                         <button class="btn btn-xs btn-square btn-ghost" @click="moveMod(index, 1)" :disabled="index === activeMods.length - 1">▼</button>
@@ -387,6 +401,14 @@
 
                 init() {
                     this.refreshAll();
+                    // 监听 Tab 切换，触发sse
+                    this.$watch('currentTab', (val) => {
+                        if (val === 'monitor') {
+                            this.startLogStream();
+                        } else {
+                            this.stopLogStream(); // 离开页面时断开连接，节省资源
+                        }
+                    });
                 },
 
                 refreshAll() {
@@ -539,11 +561,10 @@
                     // 检查 ModID 是否存在
                     let mid = item.mod_id;
                     
-                    // 2. 如果包含多个 ID (例如 "ID1,ID2")
+                    // 如果包含多个 ID (例如 "ID1,ID2")
                     if (mid.includes(',')) {
                         const choices = mid.split(',');
-                        // 简单起见，全部添加，让用户自己删？或者弹窗选？
-                        // 这里我们全部添加进去，这最省事
+                        // 全部添加进去，最省事
                         choices.forEach(subId => {
                             this.pushToActive({
                                 name: item.name + ` (${subId})`, // 区分名字
@@ -656,13 +677,61 @@
                     }
                 },
 
-                async fetchLogs() {
-                    try {
-                         const res = await fetch('/api/logs');
-                         const data = await res.json();
-                         this.logs = data.logs;
-                    } catch {
-                        this.logs = this.i18n.log_fetch_error;
+                 // 开启 SSE 日志流
+                startLogStream() {
+                    if (this.eventSource) return; // 避免重复连接
+
+                    this.logs = "Connecting...\n";
+                    
+                    // 创建 EventSource
+                    this.eventSource = new EventSource('/api/logs/stream');
+
+                    this.eventSource.onopen = () => {
+                        this.logConnected = true;
+                        this.logs = ""; // 连接成功后清空提示
+                    };
+
+                    this.eventSource.onmessage = (event) => {
+                        // 追加日志
+                        this.logs += event.data + "\n";
+                        
+                        // 限制日志长度，防止浏览器内存爆炸（例如保留最近 5000 字符）
+                        if (this.logs.length > 10000) {
+                            this.logs = this.logs.slice(-5000);
+                        }
+
+                        // 自动滚动到底部
+                        this.$nextTick(() => {
+                            if (this.$refs.logBox) {
+                                this.$refs.logBox.scrollTop = this.$refs.logBox.scrollHeight;
+                            }
+                        });
+                    };
+
+                    this.eventSource.onerror = (err) => {
+                        console.error("SSE Error:", err);
+                        this.logConnected = false;
+                        this.eventSource.close();
+                        this.eventSource = null;
+                        // 可以选择自动重连，或者手动重连
+                        this.logs += "\n[disconnect...]\n";
+                    };
+                },
+
+                // 关闭 SSE 日志流
+                stopLogStream() {
+                    if (this.eventSource) {
+                        this.eventSource.close();
+                        this.eventSource = null;
+                        this.logConnected = false;
+                    }
+                },
+                // 切换日志流开关
+                toggleLogStream() {
+                    if (this.logConnected) {
+                        this.stopLogStream();
+                    } else {
+                        this.startLogStream();
                     }
                 },
 
@@ -674,7 +743,7 @@
                 },
                 // 重启面板 API 调用
                 restartPanel() {
-                    if (!confirm('确定要重启面板服务吗？页面将会短暂失去连接。')) return;
+                    if (!confirm(this.i18n.restart_in_progress)) return;
 
                     fetch('/api/service/restart', { method: 'POST' })
                         .then(res => res.json())
@@ -683,7 +752,7 @@
                             // 3秒后刷新页面
                             setTimeout(() => location.reload(), 3000);
                         })
-                        .catch(err => alert('重启命令发送失败: ' + err));
+                        .catch(err => alert(this.i18n.restart_failed + err));
                 },
                 async checkUpdate() {
                     this.loading = true;
