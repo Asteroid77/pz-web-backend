@@ -115,7 +115,7 @@ func CheckUpdate() (string, string, error) {
 
 // PerformUpdate 执行下载和替换
 func PerformUpdate(downloadUrl string) error {
-	// 1. 下载新文件
+	// 下载新文件
 	resp, err := http.Get(downloadUrl)
 	if err != nil {
 		return err
@@ -133,7 +133,7 @@ func PerformUpdate(downloadUrl string) error {
 	// 授予执行权限
 	os.Chmod(tmpPath, 0755)
 
-	// 2. 替换旧文件 (原子操作)
+	// 替换旧文件 (原子操作)
 	// 在 Linux 中，即使程序正在运行，也可以重命名它的二进制文件
 	binPath, err := os.Executable()
 
@@ -184,5 +184,5 @@ func handleRestartPanel(c *gin.Context) {
 		}
 	}()
 
-	c.JSON(200, gin.H{"status": "ok", "message": "面板正在重启，请稍后刷新页面..."})
+	c.JSON(200, gin.H{"status": "ok", "message": "Restaring..."})
 }

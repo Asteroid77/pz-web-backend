@@ -139,7 +139,7 @@ func main() {
 	})
 	r.POST("/api/action/update_restart", func(c *gin.Context) {
 		// 重启 pzserver。
-		c.JSON(200, gin.H{"status": "ok", "message": "正在后台执行更新与重启..."})
+		c.JSON(200, gin.H{"status": "ok", "message": "Updating and Restarting in background..."})
 
 		// 2. 异步执行
 		go func() {
@@ -197,7 +197,7 @@ func main() {
 			return languages[i].Code < languages[j].Code
 		})
 
-		// 2. 获取当前语言的 UI 文本
+		// 获取当前语言的 UI 文本
 		// 如果请求的语言没有 UI 翻译（比如 AR），回退到 EN
 		uiResources, ok := WebUIResources[currentLang]
 		if !ok {
@@ -220,7 +220,7 @@ func main() {
 		targetIds := strings.Split(idsStr, ",")
 		var results []ModInfo
 
-		// 1. 先获取所有本地已安装的
+		// 先获取所有本地已安装的
 		localMods, _ := ScanLocalMods("")
 
 		for _, wid := range targetIds {
@@ -322,10 +322,10 @@ func main() {
 				}
 			}()
 
-			c.JSON(200, gin.H{"status": "saved_and_restarting", "message": "配置已保存，服务器正在重启..."})
+			c.JSON(200, gin.H{"status": "saved_and_restarting", "message": "Save completed! Restarting server..."})
 		} else {
 			// 不需要重启，仅保存
-			c.JSON(200, gin.H{"status": "saved", "message": "配置已保存"})
+			c.JSON(200, gin.H{"status": "saved", "message": "Successfully saved!"})
 		}
 	})
 
