@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
@@ -165,8 +164,9 @@ func PerformUpdate(downloadUrl string) error {
 	// 使用 nohup 异步重启，防止当前 HTTP 请求被中断导致客户端收不到响应
 	// 或者直接让前端由 timeout 处理
 	go func() {
-		cmd := exec.Command("supervisorctl", "restart", "webconfig")
-		cmd.Run()
+		time.Sleep(1 * time.Second)
+		fmt.Println("[System] Exiting to trigger Supervisor restart...")
+		os.Exit(0)
 	}()
 
 	return nil
@@ -176,12 +176,8 @@ func handleRestartPanel(c *gin.Context) {
 	go func() {
 		// 稍微延迟一下，给 HTTP 响应一点时间返回
 		time.Sleep(1 * time.Second)
-
-		// 这里的 webconfig 必须和你 supervisor conf 里的 program 名称一致
-		cmd := exec.Command("supervisorctl", "restart", "webconfig")
-		if err := cmd.Run(); err != nil {
-			fmt.Println("Restart failed:", err)
-		}
+		fmt.Println("[System] Exiting to trigger Supervisor restart...")
+		os.Exit(0)
 	}()
 
 	c.JSON(200, gin.H{"status": "ok", "message": "Restaring..."})
