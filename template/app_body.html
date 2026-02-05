@@ -1,0 +1,25 @@
+{{define "app_body"}}
+    {{template "partials/navbar" .}}
+
+    {{template "partials/desktop_tabs" .}}
+
+    <!-- 主内容区域 -->
+    <div class="flex-1 md:container md:mx-auto md:bg-base-100 md:p-6 md:rounded-box md:shadow-lg relative">
+        
+        <!-- Loading -->
+        <div x-show="loading" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm" style="display: none;">
+            <span class="loading loading-spinner loading-lg text-primary"></span>
+        </div>
+        {{template "modules/server" .}}
+
+        {{template "modules/sandbox" .}}
+
+        {{template "modules/monitor" .}}
+    </div>
+
+    {{template "partials/mobile_nav" .}}
+
+    {{template "partials/toast" .}}
+
+    {{template "modules/mod_modal" .}}
+{{end}}

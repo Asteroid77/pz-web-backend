@@ -1,0 +1,11 @@
+{{define "partials/toast"}}
+    <!-- Toast 通知 -->
+    <div class="toast toast-end z-50">
+        <div class="alert alert-success" x-show="toast.show && toast.type === 'success'" x-transition.duration.500ms>
+            <span x-text="toast.message"></span>
+        </div>
+        <div class="alert alert-error" x-show="toast.show && toast.type === 'error'" x-transition.duration.500ms>
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+{{end}}
