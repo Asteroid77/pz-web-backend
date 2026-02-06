@@ -1,0 +1,10 @@
+{{define "partials/desktop_tabs"}}
+    <!-- 桌面端 Tabs (md以上显示) -->
+    <div class="hidden md:flex justify-center mt-2">
+        <div role="tablist" class="tabs tabs-lifted tabs-lg">
+            <a role="tab" class="tab" :class="currentTab === 'server' ? 'tab-active' : ''" @click="currentTab = 'server'" x-text="i18n.tab_server"></a>
+            <a role="tab" class="tab" :class="currentTab === 'sandbox' ? 'tab-active' : ''" @click="currentTab = 'sandbox'" x-text="i18n.tab_sandbox"></a>
+            <a role="tab" class="tab" :class="currentTab === 'monitor' ? 'tab-active' : ''" @click="currentTab = 'monitor'" x-text="i18n.tab_monitor"></a>
+        </div>
+    </div>
+{{end}}

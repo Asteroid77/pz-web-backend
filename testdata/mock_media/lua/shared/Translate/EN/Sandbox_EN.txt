@@ -1,0 +1,9 @@
+{
+Sandbox_Zombies = "Zombies",
+Sandbox_DayLength = "Day Length",
+Sandbox_DayLength_option1 = "1 hour",
+Sandbox_DayLength_option2 = "2 hours",
+Sandbox_Speed = "Speed",
+Sandbox_Speed_tooltip = "Zombie speed",
+}
+

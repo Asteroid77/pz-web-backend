@@ -1,0 +1,55 @@
+{{define "modules/sandbox"}}
+        <!-- Tab 2: Sandbox  -->
+        <div x-show="currentTab === 'sandbox'" class="p-4 md:p-0 space-y-4">
+            <template x-for="(items, section) in sandboxSections" :key="section">
+                <div tabindex="0" class="collapse collapse-arrow border border-base-200 bg-base-100 rounded-box shadow-sm">
+                    <input type="checkbox" checked /> 
+                    <div class="collapse-title text-base font-bold flex items-center gap-2">
+                        <span class="w-1 h-6 bg-secondary rounded-full"></span>
+                        <span x-text="section"></span>
+                    </div>
+                    <div class="collapse-content pt-2">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <template x-for="item in items" :key="item.key">
+                                <fieldset class="fieldset bg-base-200/50 border-base-200 border rounded-lg p-3">
+                                    <legend class="fieldset-legend text-xs font-bold text-secondary px-2 uppercase tracking-wide" x-text="item.key || item.label"></legend>
+                                    
+                                    <label class="label py-0 pb-1">
+                                        <span class="label-text-alt font-mono text-[10px] opacity-50 select-text" x-text="item.label"></span>
+                                    </label>
+
+                                    <template x-if="item.options">
+                                        <select class="select select-bordered select-sm w-full mt-1" x-model="item.value">
+                                            <template x-for="opt in item.options" :key="opt.value">
+                                                <option :value="opt.value" x-text="opt.label"></option>
+                                            </template>
+                                        </select>
+                                    </template>
+                                    <template x-if="!item.options">
+                                        <input type="text" class="input input-bordered input-sm w-full mt-1" x-model="item.value" />
+                                    </template>
+                                    <div class="mt-1 text-[10px] text-base-content/60 leading-tight truncate" x-text="item.tooltip" :title="item.tooltip"></div>
+                                </fieldset>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            <div class="md:hidden grid grid-cols-2 gap-2 mt-4">
+                <button class="btn btn-neutral" @click="saveConfig('sandbox', false)">
+                    <span x-text="i18n.btn_save"></span>
+                </button>
+                <button class="btn btn-primary" @click="saveConfig('sandbox', true)"><span x-text="i18n.btn_save_restart"></span></button>
+            </div>
+            <div class="hidden md:flex fixed bottom-8 right-8 gap-3 z-40">
+                <button class="btn btn-neutral shadow-lg gap-2" @click="saveConfig('sandbox', false)">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" /></svg>
+                    <span x-text="i18n.btn_save"></span>
+                </button>
+                <button class="btn btn-primary shadow-lg gap-2" @click="saveConfig('sandbox', true)">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                    <span x-text="i18n.btn_save_restart"></span>
+                </button>
+            </div>
+        </div>
+{{end}}

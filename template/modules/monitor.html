@@ -1,0 +1,55 @@
+{{define "modules/monitor"}}
+        <!-- Tab 3: Monitor -->
+        <div x-show="currentTab === 'monitor'" class="p-4 space-y-6" x-transition:enter="transition ease-out duration-200">
+            <!-- 按钮组 -->
+            <div class="grid grid-cols-2 gap-4">
+                 <!-- 重启面板  -->
+                <button class="btn btn-error h-auto py-4 flex flex-col gap-2" @click="restartPanel()">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8"><path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" /></svg>
+                    <span x-text="i18n.menu_restart_service"></span>
+                </button>
+                 <!-- 检查更新  -->
+                <button class="btn btn-warning h-auto py-4 flex flex-col gap-2" @click="checkUpdate()">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    <span x-text="i18n.update_check"></span>
+                </button>
+                 <!-- 更新并重启  -->
+                <button class="btn btn-error h-auto py-4 flex flex-col gap-2" @click="performAction('update_restart')">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l3 3m0 0l3-3m-3 3v-7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span x-text="i18n.btn_update"></span>
+                </button>
+            </div>
+
+            <!-- 日志区域 -->
+            <div class="card bg-base-100 shadow-xl border border-base-200">
+                <div class="card-body p-0">
+                    <!-- 标题栏 -->
+                    <div class="p-3 border-b border-base-200 flex justify-between items-center bg-base-200/50 rounded-t-box">
+                        <span class="font-bold text-sm flex items-center gap-2">
+                            <!-- 状态指示灯 -->
+                            <div class="w-2 h-2 rounded-full" 
+                                :class="logConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'"></div>
+                            Server Log (Real-time)
+                        </span>
+                        
+                        <!-- 手动开关日志流 -->
+                        <div class="flex gap-2">
+                            <button class="btn btn-xs" @click="toggleLogStream()" x-text="i18n.btn_connect"></button>
+                            <button class="btn btn-xs" @click="logs = ''">Clear</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 日志内容框 -->
+                    <!-- 
+                        x-ref="logBox" 用于 JS 获取 DOM 元素进行自动滚动 
+                        white-space-pre-wrap 保证换行正常显示
+                    -->
+                    <pre x-ref="logBox" class="h-[400px] overflow-auto p-4 text-xs font-mono bg-[#1e1e1e] text-green-500 leading-tight whitespace-pre-wrap" x-text="logs"></pre>
+                </div>
+            </div>
+        </div>
+{{end}}

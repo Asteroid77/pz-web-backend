@@ -1,0 +1,5 @@
+{
+UI_ServerOption_SteamVAC_tooltip = "Enable VAC",
+UI_ServerOption_Map_tooltip = "Map",
+}
+
