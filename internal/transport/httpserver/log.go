@@ -37,6 +37,8 @@ func (a App) handleStreamLogs(c *gin.Context) {
 
 	// 创建 scanner 按行读取
 	scanner := bufio.NewScanner(rc)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
 
 	// 循环读取输出并发送给前端
 	for scanner.Scan() {
@@ -47,6 +49,11 @@ func (a App) handleStreamLogs(c *gin.Context) {
 			c.Writer.Write([]byte("data: " + text + "\n\n"))
 			c.Writer.Flush()
 		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		c.Writer.Write([]byte("event: error\ndata: " + err.Error() + "\n\n"))
+		c.Writer.Flush()
 	}
 
 	// Give the client a moment to receive buffered data before returning.
