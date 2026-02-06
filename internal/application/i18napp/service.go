@@ -47,8 +47,15 @@ func (s Service) ResolveLang(lang string) string {
 }
 
 func (s Service) listLanguages() []LanguageOption {
+	if s.FS == nil {
+		return defaultLanguages()
+	}
+
 	translateDir := filepath.Join(s.BaseGameDir, "lua/shared/Translate")
-	files, _ := s.FS.ReadDir(translateDir)
+	files, err := s.FS.ReadDir(translateDir)
+	if err != nil {
+		return defaultLanguages()
+	}
 
 	var languages []LanguageOption
 	for _, f := range files {
@@ -63,22 +70,49 @@ func (s Service) listLanguages() []LanguageOption {
 		languages = append(languages, LanguageOption{Code: code, Name: name})
 	}
 
+	if len(languages) == 0 {
+		return defaultLanguages()
+	}
+
 	sort.Slice(languages, func(i, j int) bool {
-		if languages[i].Code == "CN" {
-			return true
-		}
-		if languages[j].Code == "CN" {
+		a := languages[i].Code
+		b := languages[j].Code
+		if a == b {
 			return false
 		}
-		if languages[i].Code == "EN" {
-			return true
+		pa := langPriority(a)
+		pb := langPriority(b)
+		if pa != pb {
+			return pa < pb
 		}
-		if languages[j].Code == "EN" {
-			return false
-		}
-		return languages[i].Code < languages[j].Code
+		return a < b
 	})
 	return languages
+}
+
+func defaultLanguages() []LanguageOption {
+	return []LanguageOption{
+		{Code: "CN", Name: langNameOrCode("CN")},
+		{Code: "EN", Name: langNameOrCode("EN")},
+	}
+}
+
+func langNameOrCode(code string) string {
+	if name, ok := i18n.LangNameMap[code]; ok {
+		return name
+	}
+	return code
+}
+
+func langPriority(code string) int {
+	switch code {
+	case "CN":
+		return 0
+	case "EN":
+		return 1
+	default:
+		return 2
+	}
 }
 
 func resolveLang(requested string, languages []LanguageOption) string {
