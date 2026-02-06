@@ -2,13 +2,17 @@ package httpserver
 
 import (
 	"bufio"
-	"os/exec"
+	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-func streamLogs(c *gin.Context) {
-	path := "/home/steam/pz-stdout.log" // 你的日志路径
+func (a App) handleStreamLogs(c *gin.Context) {
+	path := a.LogPath
+	if path == "" {
+		path = "/home/steam/pz-stdout.log"
+	}
 
 	// 设置 SSE 标头
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
@@ -19,33 +23,20 @@ func streamLogs(c *gin.Context) {
 	c.Writer.Header().Set("X-Accel-Buffering", "no")          // 解决 Nginx 缓冲
 	c.Writer.Header().Set("Content-Encoding", "identity")     // 禁用压缩
 
-	// 使用 tail -f -n 100 命令读取日志，这是最简单且性能最好的方式
-	// -n 100 表示先输出最后100行，然后持续输出新内容
-	cmd := exec.Command("tail", "-f", "-n", "100", path)
-
-	// 获取 stdout 管道
-	stdout, err := cmd.StdoutPipe()
+	ctx := c.Request.Context()
+	if a.LogTailer == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "log tailer not configured"})
+		return
+	}
+	rc, err := a.LogTailer.Tail(ctx, path, 100)
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	if err := cmd.Start(); err != nil {
-		return
-	}
+	defer rc.Close()
 
 	// 创建 scanner 按行读取
-	scanner := bufio.NewScanner(stdout)
-
-	// 监听客户端断开连接 (Context Done)
-	clientGone := c.Request.Context().Done()
-
-	go func() {
-		<-clientGone
-		// 客户端断开后，杀掉 tail 进程，防止僵尸进程
-		if cmd.Process != nil {
-			cmd.Process.Kill()
-		}
-	}()
+	scanner := bufio.NewScanner(rc)
 
 	// 循环读取输出并发送给前端
 	for scanner.Scan() {
@@ -57,4 +48,7 @@ func streamLogs(c *gin.Context) {
 			c.Writer.Flush()
 		}
 	}
+
+	// Give the client a moment to receive buffered data before returning.
+	time.Sleep(10 * time.Millisecond)
 }

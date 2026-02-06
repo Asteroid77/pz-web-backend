@@ -12,6 +12,7 @@ import (
 	"pz-web-backend/internal/i18n"
 	"pz-web-backend/internal/infra/executil"
 	"pz-web-backend/internal/infra/fs"
+	"pz-web-backend/internal/infra/logtail"
 	"pz-web-backend/internal/infra/pzpaths"
 	"pz-web-backend/internal/infra/supervisor"
 	"pz-web-backend/internal/mods"
@@ -29,6 +30,7 @@ type App struct {
 	BaseDataDir string
 	BaseGameDir string
 	Build       BuildInfo
+	LogPath     string
 
 	Config config.Service
 	I18n   *i18n.Loader
@@ -37,12 +39,14 @@ type App struct {
 	I18nApp   i18napp.Service
 	ModsApp   modsapp.Service
 	UpdateApp updateapp.Service
+	LogTailer logtail.Tailer
 }
 
-func NewApp(baseDataDir string, baseGameDir string, serverName string, build BuildInfo, devMode bool) App {
+func NewApp(baseDataDir string, baseGameDir string, serverName string, logPath string, build BuildInfo, devMode bool) App {
 	osfs := fs.OSFS{}
 	runner := executil.OSRunner{}
 	restarter := supervisor.SupervisorctlRestarter{Runner: runner}
+	tailer := logtail.OSTailer{}
 
 	resolvedServerName := configapp.ResolveServerName(osfs, baseDataDir, serverName)
 
@@ -78,6 +82,7 @@ func NewApp(baseDataDir string, baseGameDir string, serverName string, build Bui
 		BaseDataDir: baseDataDir,
 		BaseGameDir: baseGameDir,
 		Build:       build,
+		LogPath:     logPath,
 		I18n:        loader,
 		Config:      configSvc,
 
@@ -99,6 +104,7 @@ func NewApp(baseDataDir string, baseGameDir string, serverName string, build Bui
 			Workshop:   workshopClient,
 		},
 		UpdateApp: updateSvc,
+		LogTailer: tailer,
 	}
 }
 

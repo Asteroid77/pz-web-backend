@@ -10,6 +10,7 @@ type Config struct {
 	BaseDataDir string
 	BaseGameDir string
 	ServerName  string
+	LogPath     string
 	DevMode     bool
 	Build       BuildInfo
 
@@ -20,7 +21,7 @@ func NewEngine(cfg Config) *gin.Engine {
 	r := gin.Default()
 	SetupStaticAndTemplates(r, cfg.ContentFS)
 
-	app := NewApp(cfg.BaseDataDir, cfg.BaseGameDir, cfg.ServerName, cfg.Build, cfg.DevMode)
+	app := NewApp(cfg.BaseDataDir, cfg.BaseGameDir, cfg.ServerName, cfg.LogPath, cfg.Build, cfg.DevMode)
 	app.RegisterRoutes(r)
 	return r
 }
