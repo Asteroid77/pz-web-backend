@@ -1,8 +1,14 @@
 package main
 
 import (
+	"context"
 	"embed"
+	"errors"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"pz-web-backend/internal/infra/pzpaths"
 	httpserver "pz-web-backend/internal/transport/httpserver"
@@ -31,10 +37,11 @@ func main() {
 	baseDataDir := base.DataDir
 	baseGameDir := base.GameDir
 
-	r := httpserver.NewEngine(httpserver.Config{
+	handler := httpserver.NewEngine(httpserver.Config{
 		BaseDataDir: baseDataDir,
 		BaseGameDir: baseGameDir,
 		ServerName:  os.Getenv("PZ_SERVER_NAME"),
+		LogPath:     os.Getenv("PZ_LOG_PATH"),
 		DevMode:     devMode,
 		Build: httpserver.BuildInfo{
 			Version:    Version,
@@ -44,7 +51,31 @@ func main() {
 		},
 		ContentFS: contentFS,
 	})
-	r.Run(":10888")
+
+	srv := &http.Server{
+		Addr:              ":10888",
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- srv.ListenAndServe()
+	}()
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	select {
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_ = srv.Shutdown(shutdownCtx)
+	case err := <-errCh:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			panic(err)
+		}
+	}
 }
 
 func mustGetwd() string {
