@@ -8,7 +8,10 @@ import (
 )
 
 func SetupStaticAndTemplates(r *gin.Engine, contentFS fs.FS) {
-	assetsFS, _ := fs.Sub(contentFS, "template/assets")
+	assetsFS, err := fs.Sub(contentFS, "template/assets")
+	if err != nil {
+		panic(err)
+	}
 	r.StaticFS("/assets", http.FS(assetsFS))
 
 	tmpl := mustParseTemplates(contentFS)
