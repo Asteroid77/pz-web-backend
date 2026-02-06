@@ -57,7 +57,6 @@ func (l *Loader) loadLanguage(lang string) TranslationMap {
 	}
 
 	t := make(TranslationMap)
-	fmt.Printf("Loading translations for language: %s\n", lang)
 
 	filePrefixes := []string{"Sandbox", "UI", "Tooltip"}
 	for _, prefix := range filePrefixes {
@@ -124,6 +123,8 @@ func loadFile(path string, targetMap TranslationMap) error {
 
 	re := regexp.MustCompile(`^\s*([A-Za-z0-9_]+)\s*=\s*"(.*)",?.*`)
 	scanner := bufio.NewScanner(strings.NewReader(finalStr))
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" || strings.HasPrefix(line, "--") || line == "{" || line == "}" {
@@ -140,6 +141,9 @@ func loadFile(path string, targetMap TranslationMap) error {
 		}
 	}
 
+	if err := scanner.Err(); err != nil {
+		return err
+	}
 	return nil
 }
 
