@@ -110,7 +110,7 @@ func NewApp(baseDataDir string, baseGameDir string, serverName string, logPath s
 
 func mustDefaultWorkshopClient(devMode bool) modsapp.WorkshopFetcher {
 	path := pzpaths.WorkshopCachePath(devMode)
-	client, err := mods.NewFileCachedWorkshopClient(path, http.DefaultClient)
+	client, err := mods.NewFileCachedWorkshopClient(path, &http.Client{Timeout: 10 * time.Second})
 	if err != nil {
 		panic(err)
 	}
